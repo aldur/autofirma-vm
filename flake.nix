@@ -40,7 +40,7 @@
         inherit inputs;
         name = "autofirma-vm";
         hostName = "autofirma-vm";
-        qemuModule = ./autofirma.nix;
+        qemuModule = ./desktop.nix;
 
         vmOverrides = {
           defaultVmDir = "$HOME/.local/share/autofirma-vm";
@@ -62,12 +62,9 @@
           modules = [ ./baguette.nix ];
         };
       baguette = {
-        nixosConfigurations = {
-          # The hostname names the configuration: `nixos-rebuild` inside the
-          # VM selects it that way.
-          autofirma-baguette = mkBaguette "aarch64-linux";
-          autofirma-baguette-x86_64 = mkBaguette "x86_64-linux";
-        };
+        # The image is aarch64 only. The configuration is a CI target: it
+        # builds the system closure without the image.
+        nixosConfigurations.autofirma-baguette = mkBaguette "aarch64-linux";
       }
       // flake-utils.lib.eachSystem linuxSystems (system: {
         packages.baguette-zimage = (mkBaguette system).config.system.build.btrfsImageCompressed;
@@ -90,7 +87,7 @@
             # Boots the QEMU guest, imports a test certificate into Firefox,
             # and signs a document through the afirma:// WebSocket flow.
             sign-via-websocket = pkgs.callPackage ./tests/sign-via-websocket.nix {
-              guestModule = ./autofirma.nix;
+              guestModule = ./desktop.nix;
               baseModule = aldur-dotfiles.nixosModules.default;
               inherit specialArgs;
               inherit (inputs) autofirma-nix;

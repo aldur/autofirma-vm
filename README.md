@@ -10,8 +10,8 @@ system trust store. In this VM, the CA stays in `/etc/Autofirma` and in the
 guest Firefox. The host trust store does not change.
 
 The packages come from [autofirma-nix][1]. `guest.nix` holds what runs.
-`desktop.nix` adds the XFCE session of the QEMU VM. `autofirma.nix` holds
-the QEMU VM settings. `baguette.nix` holds the Baguette image.
+`desktop.nix` holds the QEMU VM: its XFCE session and its settings.
+`baguette.nix` holds the Baguette image.
 
 This repository holds only what is specific to AutoFirma. The `qemu-vm`
 launcher, the QEMU and Baguette guest modules, and the base configuration
@@ -139,7 +139,7 @@ nix build .#checks.x86_64-linux.qemu-configuration -L
 `qemu-configuration` checks that
 the signing test retains production storage, application packages/policies,
 user configuration, environment and service timeouts. The QEMU scenario
-imports `autofirma.nix`, including the shared QEMU guest module. Its local
+imports `desktop.nix`, including the shared QEMU guest module. Its local
 HTTPS server and the NixOS test driver remain explicit instrumentation.
 
 The nixos-crostini smoke harness uses a fixture ext4 tools disk with

@@ -1,8 +1,9 @@
-# The QEMU session of the guest: an XFCE desktop with auto-login, Firefox
-# at start, and the clipboard agent. The files of `qemu-vm --file` come in
+# The guest as a QEMU VM: an XFCE desktop with auto-login, Firefox at
+# start, and the clipboard agent. The files of `qemu-vm --file` come in
 # through fw_cfg (modules/nixos/qemu-vm-files.nix).
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -11,9 +12,19 @@ let
   user = config.mainUser;
 in
 {
-  imports = [ ./guest.nix ];
+  imports = [
+    inputs.self.nixosModules.qemu-guest
+    ./guest.nix
+  ];
 
   networking.hostName = "autofirma-vm";
+
+  # The host key of the qemu-vm template. The guest only uses it with the
+  # host, so both guests can share it: one known_hosts entry for
+  # localhost:2222.
+  aldur.qemuGuest.sshHostKeyDir = "${inputs.self}/base_hosts/qemu";
+
+  virtualisation.graphics = true;
 
   aldur.autofirma = {
     filesDir = "/run/qemu-vm-files";

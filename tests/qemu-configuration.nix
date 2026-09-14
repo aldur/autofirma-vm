@@ -27,6 +27,7 @@ let
     firefox = c.programs.firefox.finalPackage.drvPath;
     autofirma = c.programs.autofirma.finalPackage.drvPath;
     logrotate = c.services.logrotate.enable;
+    nixPath = c.nix.nixPath;
     manager = c.systemd.settings.Manager;
     userManager = c.systemd.user.extraConfig;
   };

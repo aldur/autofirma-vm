@@ -33,14 +33,15 @@ jobs:
           persist-credentials: false
       - &setup-nix
         uses: aldur/dotfiles/.github/actions/setup-nix@master
-      - uses: DeterminateSystems/flake-checker-action@de924abd783455e8429c858962b9e43062d19da1  # v13
-        with:
-          send-statistics: false
       - &fetch-signing-keys
         uses: aldur/dotfiles/.github/actions/fetch-signing-keys@master
         with:
           token: ${{ github.token }}
           path: ${{ env.SIGNING_KEYS }}
+      # No flake-checker here: it wants a root `nixpkgs` input, and this
+      # flake takes nixpkgs from `aldur-dotfiles`, whose CI checks it.
+      # This step also evaluates the `qemu-configuration` check. Its
+      # assertion runs at evaluation time, so it needs no build job.
       - run: |
           nix flake check --all-systems --no-build \
             --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" .
@@ -62,8 +63,6 @@ jobs:
           # The runtime checks on KVM.
           - runner: ubuntu-24.04
             target: .#checks.x86_64-linux.sign-via-websocket
-          - runner: ubuntu-24.04
-            target: .#checks.x86_64-linux.qemu-configuration
           - runner: ubuntu-24.04
             target: .#checks.x86_64-linux.baguette-boot
 
