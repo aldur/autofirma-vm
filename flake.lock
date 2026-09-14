@@ -1,0 +1,525 @@
+{
+  "nodes": {
+    "agenix": {
+      "inputs": {
+        "darwin": [
+          "aldur-dotfiles"
+        ],
+        "home-manager": [
+          "aldur-dotfiles",
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ],
+        "systems": [
+          "aldur-dotfiles",
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1770165109,
+        "narHash": "sha256-9VnK6Oqai65puVJ4WYtCTvlJeXxMzAp/69HhQuTdl/I=",
+        "owner": "ryantm",
+        "repo": "agenix",
+        "rev": "b027ee29d959fda4b60b57566d64c98a202e0feb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ryantm",
+        "repo": "agenix",
+        "type": "github"
+      }
+    },
+    "aldur-dotfiles": {
+      "inputs": {
+        "agenix": "agenix",
+        "clipshare": "clipshare",
+        "dashp": "dashp",
+        "detnix": "detnix",
+        "flake-utils": "flake-utils",
+        "gh-signing-keys": "gh-signing-keys",
+        "home-manager": "home-manager",
+        "nix-index-database": "nix-index-database",
+        "nixCats": "nixCats",
+        "nixpkgs": "nixpkgs_2",
+        "nixpkgs-darwin": "nixpkgs-darwin",
+        "nixpkgs-unstable": "nixpkgs-unstable",
+        "preservation": "preservation",
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1789380121,
+        "narHash": "sha256-TL/2G0Nsl9UdxeWzIR0nKayZnhpGZdrldXwxQv7ED9g=",
+        "owner": "aldur",
+        "repo": "dotfiles",
+        "rev": "f554c4e419e31d23ac3c3b70e6bafcf2f11706b8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aldur",
+        "repo": "dotfiles",
+        "type": "github"
+      }
+    },
+    "autofirma-nix": {
+      "inputs": {
+        "autofirma-src": "autofirma-src",
+        "clienteafirma-external-src": "clienteafirma-external-src",
+        "flake-parts": "flake-parts",
+        "home-manager": [
+          "aldur-dotfiles",
+          "home-manager"
+        ],
+        "jmulticard-src": "jmulticard-src",
+        "nix-unit": "nix-unit",
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786162822,
+        "narHash": "sha256-W9wbwfFwDq/a86fq94NVKtlyYtUGbxTJROKVLsE+5Fo=",
+        "owner": "nix-community",
+        "repo": "autofirma-nix",
+        "rev": "ea43f59dce164bd46e4b4a54f6d3c22cc6ecc71e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "autofirma-nix",
+        "type": "github"
+      }
+    },
+    "autofirma-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1747811913,
+        "narHash": "sha256-vk0I2wpaiwC5kY8R36i/1CLHGCtsl3scDcJ6qg1p50k=",
+        "owner": "ctt-gob-es",
+        "repo": "clienteafirma",
+        "rev": "1f29aa7a2aae8eda40a70fed79b0428153c78df8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ctt-gob-es",
+        "ref": "v1.9",
+        "repo": "clienteafirma",
+        "type": "github"
+      }
+    },
+    "clienteafirma-external-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1753702371,
+        "narHash": "sha256-3bXdZ6fQAId6nHqiJ60BDBhFI9cosN7jtI0soggcO9Q=",
+        "owner": "ctt-gob-es",
+        "repo": "clienteafirma-external",
+        "rev": "d3792cc3816906da7fff652f9bd122f84b29b5c7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ctt-gob-es",
+        "ref": "v1.0.6",
+        "repo": "clienteafirma-external",
+        "type": "github"
+      }
+    },
+    "clipshare": {
+      "inputs": {
+        "flake-utils": [
+          "aldur-dotfiles",
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780687051,
+        "narHash": "sha256-WnUipSSUP+dx7jwuo4V3a0r6z1nUg3ivWyLyFX+TNdo=",
+        "owner": "aldur",
+        "repo": "clipshare",
+        "rev": "98cd16f5b55888526cc1cb28ee61a9697033262f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aldur",
+        "repo": "clipshare",
+        "type": "github"
+      }
+    },
+    "dashp": {
+      "inputs": {
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1763314327,
+        "narHash": "sha256-zZli1izZzfafYZXE2xir1+Lct5GAbOtGoMXLVlobijk=",
+        "owner": "aldur",
+        "repo": "dashp",
+        "rev": "4138d3b67f861e2269129176791f68d04771790c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aldur",
+        "repo": "dashp",
+        "type": "github"
+      }
+    },
+    "detnix": {
+      "inputs": {
+        "flake-parts": [
+          "aldur-dotfiles"
+        ],
+        "git-hooks-nix": [
+          "aldur-dotfiles"
+        ],
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-23-11": [
+          "aldur-dotfiles"
+        ],
+        "nixpkgs-regression": [
+          "aldur-dotfiles"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788529037,
+        "narHash": "sha256-exbhybIDlstRfrS//F51kYu8Y+FLC+c3qqdiydjz//E=",
+        "owner": "DeterminateSystems",
+        "repo": "nix-src",
+        "rev": "cbbde9789a6cc9172decddc85f1052ce31c6620a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DeterminateSystems",
+        "repo": "nix-src",
+        "type": "github"
+      }
+    },
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "autofirma-nix",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785627969,
+        "narHash": "sha256-4dtXQk/NMePegK/nWp5NSeuZKLATItOq61lpEvmXqGw=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "427bf4bd9435fdf21321c8cc628c24efc14c0f7a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "inputs": {
+        "systems": [
+          "aldur-dotfiles",
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "gh-signing-keys": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-se65vQP9ypXDnXUAW/prNtPqNyeuHJjUgvuYxxMgGrw=",
+        "type": "file",
+        "url": "https://api.github.com/users/aldur/ssh_signing_keys"
+      },
+      "original": {
+        "type": "file",
+        "url": "https://api.github.com/users/aldur/ssh_signing_keys"
+      }
+    },
+    "home-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1787377438,
+        "narHash": "sha256-Sxu1NLTD/Ern6hFGLlZmtKCSct3YQXZI/lls8RE1XeM=",
+        "owner": "nix-community",
+        "repo": "home-manager",
+        "rev": "65258d5c65a250189fde2e35f490d15e064c4c62",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "ref": "release-26.05",
+        "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "jmulticard-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1753703143,
+        "narHash": "sha256-XHX9MwWQe9BIjEfrrquU9gtzx3x6leGBhWjMPmVtALE=",
+        "owner": "ctt-gob-es",
+        "repo": "jmulticard",
+        "rev": "2550e7eab43b9089673d0989959894846425f499",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ctt-gob-es",
+        "ref": "v2.0",
+        "repo": "jmulticard",
+        "type": "github"
+      }
+    },
+    "nix-github-actions": {
+      "inputs": {
+        "nixpkgs": [
+          "autofirma-nix",
+          "nix-unit",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1737420293,
+        "narHash": "sha256-F1G5ifvqTpJq7fdkT34e/Jy9VCyzd5XfJ9TO8fHhJWE=",
+        "owner": "nix-community",
+        "repo": "nix-github-actions",
+        "rev": "f4158fa080ef4503c8f4c820967d946c2af31ec9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nix-github-actions",
+        "type": "github"
+      }
+    },
+    "nix-index-database": {
+      "inputs": {
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788080100,
+        "narHash": "sha256-n14luQo3F/ZLfCEHk1QieiI1nGnW92ZQZeZ0UIb0UMQ=",
+        "owner": "nix-community",
+        "repo": "nix-index-database",
+        "rev": "dbb978fa87faf13398e90ccbc52c343d21c7dd6d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nix-index-database",
+        "type": "github"
+      }
+    },
+    "nix-unit": {
+      "inputs": {
+        "nix-github-actions": "nix-github-actions",
+        "nixpkgs": [
+          "autofirma-nix",
+          "nixpkgs"
+        ],
+        "treefmt-nix": "treefmt-nix"
+      },
+      "locked": {
+        "lastModified": 1784020394,
+        "narHash": "sha256-eG+ETC+lvHDLhlKgQB6/lGfpqr56Lt3+j1pHOeb4tK4=",
+        "owner": "nix-community",
+        "repo": "nix-unit",
+        "rev": "3a484e17e4911ed97d56e37506f22e294c7c0ccd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nix-unit",
+        "type": "github"
+      }
+    },
+    "nixCats": {
+      "locked": {
+        "lastModified": 1787720571,
+        "narHash": "sha256-jvoTU61m2p2knJMIvDwWqkhf5CrmKCkiCO0KR3GIryw=",
+        "owner": "BirdeeHub",
+        "repo": "nixCats-nvim",
+        "rev": "8fcebab53bfe800b963e8db5e28b63baa65850d3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "BirdeeHub",
+        "repo": "nixCats-nvim",
+        "type": "github"
+      }
+    },
+    "nixos-crostini": {
+      "inputs": {
+        "nixpkgs": [
+          "aldur-dotfiles",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789240116,
+        "narHash": "sha256-okPWwOZL6z96b4Av5wWMwMz7QAejZ5eV5XtgckBzaWY=",
+        "owner": "aldur",
+        "repo": "nixos-crostini",
+        "rev": "4c1181d613c9c45af8fcb1d7c87d15f19348b63f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "aldur",
+        "repo": "nixos-crostini",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1787962033,
+        "narHash": "sha256-u6z9VTZA4Kf3RkHQo9sQI7NI4Ei/uiU9vrMqOiwWP1Y=",
+        "rev": "c5c4a43b0e8056328ec4529f735cabdb8f1942bb",
+        "revCount": 1012930,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.2605.1012930%2Brev-c5c4a43b0e8056328ec4529f735cabdb8f1942bb/01a053c0-7061-7382-b001-102e9148a5b5/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.2605"
+      }
+    },
+    "nixpkgs-darwin": {
+      "locked": {
+        "lastModified": 1788807765,
+        "narHash": "sha256-J9oC0bKnkXUrMegqRTXVkyDFJ0gn2U/Qpoo9HgGMQmA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "93108a538f079596c9a16c72cf03e9322782b6dd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-26.05-darwin",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-unstable": {
+      "locked": {
+        "lastModified": 1788404924,
+        "narHash": "sha256-lhEhY8X5EgkQ/eg6IFz4cc8jRuSYSvnxx1al7d1dvZ0=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "0968519e14f7aa7d3e9b389682bd74d2b51c8ce8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1788405554,
+        "narHash": "sha256-r2f1oUwixlgq9zOdYLqJLfS/lWBT60/IITjhTKI59JU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a5cc6f2c37bf518436dc8d1c288ccd0c43c2f4c4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "preservation": {
+      "locked": {
+        "lastModified": 1757436102,
+        "narHash": "sha256-mMI9IanU+Xw+pVogD2oT0I2kTmvz2Un/Apc5+CwUpEY=",
+        "owner": "nix-community",
+        "repo": "preservation",
+        "rev": "93416f4614ad2dfed5b0dcf12f27e57d27a5ab11",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "preservation",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "aldur-dotfiles": "aldur-dotfiles",
+        "autofirma-nix": "autofirma-nix",
+        "nixos-crostini": "nixos-crostini"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "treefmt-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "autofirma-nix",
+          "nix-unit",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780220602,
+        "narHash": "sha256-eynAfOmbmxJnkp7YewvCEbShNnnYJ9gLLqkzsYtBPeM=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "db947814a175b7ca6ded66e21383d938df01c227",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

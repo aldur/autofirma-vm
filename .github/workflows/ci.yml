@@ -1,0 +1,126 @@
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# The shared steps come from the dotfiles as composite actions: the Nix
+# setup, the disk reclaim, the signing keys fetch and the attestation. The
+# lock of this flake pins the dotfiles. The CI builds against that pin; a
+# bump of the lock is a pull request with its own run.
+env:
+  # The `gh-signing-keys` input of the dotfiles is a file on api.github.com.
+  # The action writes the verified keys to this path. The jobs point the
+  # input to it with `--override-input`, and so skip the unauthenticated
+  # fetch that hits the shared rate limit.
+  SIGNING_KEYS: /tmp/ssh_signing_keys.json
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - &setup-nix
+        uses: aldur/dotfiles/.github/actions/setup-nix@master
+      - uses: DeterminateSystems/flake-checker-action@de924abd783455e8429c858962b9e43062d19da1  # v13
+        with:
+          send-statistics: false
+      - &fetch-signing-keys
+        uses: aldur/dotfiles/.github/actions/fetch-signing-keys@master
+        with:
+          token: ${{ github.token }}
+          path: ${{ env.SIGNING_KEYS }}
+      - run: |
+          nix flake check --all-systems --no-build \
+            --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" .
+
+  # One job for each (runner, target) pair. The runtime checks need KVM,
+  # which only the x86_64 runners have. Each image build uses tens of
+  # gigabytes of temporary space, so each target gets its own runner.
+  nixos-ci:
+    strategy:
+      fail-fast: false  # The targets are independent.
+      matrix:
+        include:
+          # Both launchers.
+          - runner: ubuntu-24.04
+            target: .#autofirma-vm
+          - runner: ubuntu-24.04-arm
+            target: .#autofirma-vm
+
+          # The runtime checks on KVM.
+          - runner: ubuntu-24.04
+            target: .#checks.x86_64-linux.sign-via-websocket
+          - runner: ubuntu-24.04
+            target: .#checks.x86_64-linux.qemu-configuration
+          - runner: ubuntu-24.04
+            target: .#checks.x86_64-linux.baguette-boot
+
+          # The system closure of the Baguette image as a test.
+          # baguette-image.yml builds the image itself on demand.
+          - runner: ubuntu-24.04-arm
+            target: .#nixosConfigurations.autofirma-baguette.config.system.build.toplevel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - *checkout
+      - *setup-nix
+      - uses: aldur/dotfiles/.github/actions/reclaim-disk@master
+
+      # The AutoFirma truststore fetches its certificates from the web sites
+      # of the Spanish certificate providers. A provider site is at times
+      # unreachable from a runner. The certificates are fixed-output paths,
+      # so nix accepts them from a cache without a signature, and the paths
+      # are the same on both architectures. Keep them between runs. The job
+      # index in the key gives each job its own entry: with one shared key,
+      # the parallel jobs race to save it.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: autofirma-certs
+        with:
+          path: /tmp/autofirma-certs
+          key: &autofirma-certs-key autofirma-certs-${{ strategy.job-index }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            autofirma-certs-
+      - name: Seed the store with the cached certificates
+        run: |
+          if [ -f /tmp/autofirma-certs/nix-cache-info ]; then
+            nix copy --quiet --all --from file:///tmp/autofirma-certs
+          fi
+
+      - *fetch-signing-keys
+
+      - run: |
+          nix build \
+            --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" \
+            ${{ matrix.target }}
+
+      # `always()`: keep the certificates that did download, also after a
+      # failure. Do not do this step if the cache had a hit. The Baguette
+      # configuration uses the same truststore as the VM.
+      - name: Export the certificates to the cache
+        if: always() && steps.autofirma-certs.outputs.cache-hit != 'true'
+        run: |
+          nix eval --json \
+            --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" \
+            ".#nixosConfigurations.autofirma-vm-$(uname -m).config.programs.autofirma.package.clienteafirma.truststore.govTrustedCerts" \
+            --apply 'map (cert: cert.outPath)' \
+            | jq -r '.[]' \
+            | while read -r path; do if [ -e "$path" ]; then echo "$path"; fi; done \
+            | xargs -r nix copy --quiet --to file:///tmp/autofirma-certs
+      # Upload what the step above exported also in case of failure.
+      - name: Save the certificates cache
+        if: always() && steps.autofirma-certs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/autofirma-certs
+          key: *autofirma-certs-key

@@ -1,0 +1,31 @@
+version: 2
+# Once a quarter. The tool is not in daily use, and each bump runs the
+# signing tests on KVM runners.
+updates:
+  # The lock pins the dotfiles, nixos-crostini and autofirma-nix. A bump
+  # opens one pull request, and the CI of that pull request runs the
+  # signing tests against the new inputs.
+  - package-ecosystem: "nix"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cronjob: "0 9 1 1,4,7,10 *"
+      timezone: "Etc/UTC"
+    groups:
+      nix-inputs:
+        patterns:
+          - "*"
+  # The workflows pin actions by full SHA; without this, those pins never get
+  # update PRs and silently rot.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cronjob: "0 9 1 1,4,7,10 *"
+      timezone: "Etc/UTC"
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
