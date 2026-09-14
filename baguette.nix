@@ -11,6 +11,29 @@
 }:
 let
   user = config.mainUser;
+
+  # `vsh` lands in this home. The file says how to start Firefox and where
+  # the certificate goes. The start page of Firefox says the same.
+  homeReadme = pkgs.writeText "README.md" ''
+    # AutoFirma guest
+
+    Start Firefox from the ChromeOS launcher: "Firefox (AutoFirma)", under
+    the Linux apps. Or run `autofirma-vm-firefox` in this shell. The window
+    comes through sommelier; the guest has no desktop.
+
+    Use that entry, not the plain "Firefox" one. It imports `cert.p12` from
+    the Downloads folder of ChromeOS before it starts Firefox:
+    ${cfg.filesDir}. Share that folder with Linux from the Files app first.
+    A file `cert.password` next to it skips the password dialog.
+
+    This home is a tmpfs. Nothing in it survives `vmc stop`: not the
+    Firefox profile, not the imported certificate. Keep your files in the
+    shared folder.
+
+    The start page of Firefox (file:///etc/autofirma-vm/index.html) has
+    links to the usual sedes.
+  '';
+  cfg = config.aldur.autofirma;
 in
 {
   imports = [
@@ -76,10 +99,14 @@ in
     ];
   };
   # Activation creates the home before systemd mounts the tmpfs over it.
-  systemd.tmpfiles.settings.autofirma."/home/${user}".d = {
-    inherit user;
-    group = "users";
-    mode = "0700";
+  # The tmpfs is empty at each start, so tmpfiles also puts the README in.
+  systemd.tmpfiles.settings.autofirma = {
+    "/home/${user}".d = {
+      inherit user;
+      group = "users";
+      mode = "0700";
+    };
+    "/home/${user}/README.md"."L+".argument = toString homeReadme;
   };
 
   virtualisation = {

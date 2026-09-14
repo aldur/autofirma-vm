@@ -92,7 +92,8 @@ nix build .#baguette-zimage
 
 ChromeOS shows the Firefox window through sommelier. There is no desktop in
 the guest. Start "Firefox (AutoFirma)" from the launcher, or run
-`autofirma-vm-firefox` in `vsh autofirma penguin`. The wrapper imports
+`autofirma-vm-firefox` in `vsh autofirma penguin`. A `README.md` in the
+home of the guest repeats these steps. The wrapper imports
 `cert.p12` from the Downloads folder of ChromeOS once that folder is shared
 with Linux. `/home` is a tmpfs, so the profile and the certificate do not
 survive `vmc stop`.
