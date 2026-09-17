@@ -23,8 +23,28 @@ let
 
     Use that entry, not the plain "Firefox" one. It imports `cert.p12` from
     the Downloads folder of ChromeOS before it starts Firefox:
-    ${cfg.filesDir}. Share that folder with Linux from the Files app first.
+    ${cfg.filesDir}. With this VM running, open crosh (Ctrl+Alt+T) and run:
+
+        vmc share autofirma Downloads
+
+    Shares are per VM. The Files app's "Share with Linux" targets the
+    default `termina` VM, not this separate `autofirma` VM. Both can run
+    at once. Repeat the share command after restarting this VM.
     A file `cert.password` next to it skips the password dialog.
+
+    Alternatively, copy/paste the certificate through the terminal.
+    On a machine that has it (including your existing `termina`), run
+    `base64 < cert.p12 | fold -w 64` and copy the output. In this shell, run:
+
+        umask 077
+        base64 --decode > "$HOME/cert.p12"
+
+    Paste the base64 text, finish the last line with Enter if needed,
+    then press Ctrl+D on an empty line. Once the shell prompt returns,
+    run `import-certificate "$HOME/cert.p12"`, enter the certificate
+    password when prompted, and start Firefox (or restart it if already
+    running). The import command creates the profile and certificate
+    database if needed, without opening a browser window.
 
     This home is a tmpfs. Nothing in it survives `vmc stop`: not the
     Firefox profile, not the imported certificate. Keep your files in the
@@ -42,15 +62,19 @@ in
   ];
 
   aldur.autofirma = {
-    # The Downloads folder of ChromeOS, once shared with Linux.
+    # The Downloads folder of ChromeOS, once shared with this VM.
     filesDir = "/mnt/chromeos/MyFiles/Downloads";
     filesHelp = ''
       <ol>
         <li>Put <code>cert.p12</code> in the Downloads folder of ChromeOS.</li>
-        <li>In the Files app, right-click Downloads and pick "Share with Linux".</li>
+        <li>With this VM running, open crosh (Ctrl+Alt+T) and run
+          <code>vmc share autofirma Downloads</code>. Repeat after each VM restart.</li>
         <li>Start "Firefox (AutoFirma)" again, or run
           <code>autofirma-vm-firefox</code> in <code>vsh</code>.</li>
       </ol>
+      <p>Shares are per VM. The Files app's "Share with Linux" targets the
+        default <code>termina</code> VM, not the separate <code>autofirma</code>
+        VM. Both VMs can remain running.</p>
     '';
   };
 

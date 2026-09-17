@@ -55,15 +55,46 @@ display on Linux does not: nixpkgs builds QEMU without its experimental
 
 ## Certificate by hand
 
-Without `--file`, copy the certificate over SSH. The guest sshd has no
-SFTP, so `scp` does not work:
+For the QEMU guest, without `--file`, copy the certificate over SSH. The
+guest sshd has no SFTP, so `scp` does not work:
 
 ```bash
 cat cert.p12 | ssh -p 2222 aldur@localhost "cat - > cert.p12"
 ```
 
-Then, in a terminal in the guest, run `import-certificate cert.p12` and
-restart Firefox.
+In a terminal in the guest, run `import-certificate cert.p12`, enter the
+certificate password when prompted, and start Firefox. The import command
+creates the profile and certificate database if needed, without opening a
+browser window. If Firefox is already running, restart it after importing.
+
+### Copy/paste through the terminal
+
+This also works with Baguette, without SSH or a shared folder. On a machine
+that has the certificate (including your existing `termina` Linux
+environment), encode it and copy the output:
+
+```bash
+base64 < cert.p12 | fold -w 64
+```
+
+In the target guest's terminal (`vsh autofirma penguin` from crosh for
+Baguette), run:
+
+```bash
+umask 077
+base64 --decode > "$HOME/cert.p12"
+```
+
+Paste the base64 text, press Enter if needed to finish the last line, then
+Ctrl+D on an empty line to finish input. Once the shell prompt returns:
+
+```bash
+import-certificate "$HOME/cert.p12"
+```
+
+Enter the certificate password when prompted, then start Firefox (or
+restart it if already running). No initial Firefox launch is needed.
+Repeat the transfer and import after restarting an ephemeral guest.
 
 ## Baguette
 
@@ -93,10 +124,31 @@ nix build .#baguette-zimage
 ChromeOS shows the Firefox window through sommelier. There is no desktop in
 the guest. Start "Firefox (AutoFirma)" from the launcher, or run
 `autofirma-vm-firefox` in `vsh autofirma penguin`. A `README.md` in the
-home of the guest repeats these steps. The wrapper imports
-`cert.p12` from the Downloads folder of ChromeOS once that folder is shared
-with Linux. `/home` is a tmpfs, so the profile and the certificate do not
-survive `vmc stop`.
+home of the guest repeats these steps. The wrapper imports `cert.p12`
+from `/mnt/chromeos/MyFiles/Downloads`.
+
+Put `cert.p12` in ChromeOS Downloads, then, with `autofirma` running, open
+crosh (`Ctrl+Alt+T`) and explicitly share Downloads with this VM:
+
+```bash
+vmc share autofirma Downloads
+```
+
+`Downloads` is relative to ChromeOS My Files. Shares are per VM: the Files
+app's "Share with Linux" targets the default `termina` VM, so it does not
+share the folder with a separate VM named `autofirma`. Both VMs can remain
+running. Repeat `vmc share autofirma Downloads` after restarting the VM,
+then start "Firefox (AutoFirma)" again to import the certificate.
+
+Inside `autofirma`, check the share with:
+
+```bash
+ls -la /mnt/chromeos/MyFiles/Downloads
+```
+
+Alternatively, use the [terminal copy/paste method](#copypaste-through-the-terminal)
+above. `/home` is a tmpfs, so the profile, pasted certificate and imported
+certificate do not survive `vmc stop`.
 
 The image does not import the dotfiles base module. It has no shell tools,
 no home-manager, no sshd, no `nixos-rebuild`, no documentation, no mesa
