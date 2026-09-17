@@ -92,10 +92,12 @@ let
 
   # Imports a PKCS#12 certificate into each Firefox profile of the user.
   # AutoFirma reads the certificates from the Firefox (NSS) store. With no
-  # password file, pk12util asks on the terminal.
+  # password file, pk12util asks on the terminal. Initialize a profile and
+  # its NSS database on first use, without opening a browser window.
   import-certificate = pkgs.writeShellApplication {
     name = "import-certificate";
     runtimeInputs = [
+      config.programs.firefox.finalPackage
       nss-tools
       pkgs.gnugrep
     ];
@@ -107,15 +109,14 @@ let
       cert="$1"
       profiles_ini="$HOME/.mozilla/firefox/profiles.ini"
       if [ ! -f "$profiles_ini" ]; then
-        echo "No Firefox profile yet. Start Firefox once, then retry." >&2
-        exit 1
+        firefox --headless --CreateProfile default >/dev/null 2>&1
       fi
       grep -oP '^Path=\K.*' "$profiles_ini" | while read -r profile; do
         case "$profile" in
           /*) dir="$profile" ;;
           *) dir="$HOME/.mozilla/firefox/$profile" ;;
         esac
-        [ -f "$dir/cert9.db" ] || continue
+        [ -f "$dir/cert9.db" ] || certutil -N -d "sql:$dir" --empty-password
         echo "Importing into $dir"
         if [ $# -ge 2 ]; then
           pk12util -i "$cert" -d "sql:$dir" -w "$2"
@@ -123,7 +124,7 @@ let
           pk12util -i "$cert" -d "sql:$dir"
         fi
       done
-      echo "Done. Restart Firefox so it picks the certificate up."
+      echo "Done. Start Firefox (or restart it if already running) to use the certificate."
     '';
   };
 
@@ -205,6 +206,18 @@ let
       ${cfg.filesHelp}
       <p>Or import a file by hand. In a terminal here, run
         <code>import-certificate cert.p12</code>. Then restart Firefox.</p>
+      <p>Without a shared folder, copy/paste the certificate through the
+        terminal. On a machine that has it, run
+        <code>base64 &lt; cert.p12 | fold -w 64</code> and copy the output.
+        Close Firefox, then run these commands in the guest terminal:</p>
+      <pre><code>umask 077
+    base64 --decode &gt; "$HOME/cert.p12"</code></pre>
+      <p>Paste the base64 text, press Enter if needed to finish the last line,
+        then Ctrl+D on an empty line. Once the shell prompt returns, run
+        <code>import-certificate "$HOME/cert.p12"</code>, enter the certificate
+        password when prompted, and start Firefox. The import command
+        creates the profile automatically if needed, without opening a
+        browser window.</p>
       <h2>Links</h2>
       <ul>
         <li><a href="https://valide.redsara.es/valide/">VALIDe</a>: check a signature or test the setup.</li>

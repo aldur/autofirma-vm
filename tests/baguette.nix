@@ -19,6 +19,18 @@ crostini.lib.mkBaguetteSmokeTest {
     echo "PROBE ca $(stat -c %s /etc/Autofirma/Autofirma_ROOT.cer)"
     test -f /run/current-system/sw/share/applications/autofirma-vm-firefox.desktop
 
+    # Manual import must work before the first browser launch, including
+    # importing the private key. Leave initialization to the shipped command.
+    test ! -e "/home/$user/.mozilla/firefox/profiles.ini"
+    in_session --property=RuntimeMaxSec=60 import-certificate \
+      "$probe/ciudadano.p12" "$probe/password"
+    profile=$(grep -m1 -oP '^Path=\K.*' "/home/$user/.mozilla/firefox/profiles.ini")
+    dir=/home/$user/.mozilla/firefox/$profile
+    as_user certutil -K -d "sql:$dir" | grep -i ficticio
+    echo "PROBE manual import before firefox"
+    # Keep the wrapper's existing fresh-profile coverage independent.
+    mv "/home/$user/.mozilla" "/home/$user/.mozilla-manual-import"
+
     # Files stand in for the host share. Use its production path and the
     # real wrapper; never create the profile/NSS database in the probe.
     files=${lib.escapeShellArg configuration.config.aldur.autofirma.filesDir}
@@ -65,6 +77,7 @@ crostini.lib.mkBaguetteSmokeTest {
     "home-fs tmpfs$"
     "pfx 644$"
     "ca [1-9][0-9]*$"
+    "manual import before firefox$"
     "firefox rendered$"
     "import present$"
     "signature verified$"
