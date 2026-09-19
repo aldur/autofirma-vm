@@ -22,14 +22,17 @@ let
     comes through sommelier; the guest has no desktop.
 
     Use that entry, not the plain "Firefox" one. It imports `cert.p12` from
-    the Downloads folder of ChromeOS before it starts Firefox:
-    ${cfg.filesDir}. With this VM running, open crosh (Ctrl+Alt+T) and run:
+    a dedicated ChromeOS folder before it starts Firefox: ${cfg.filesDir}.
+    Create Downloads/AutoFirma in the Files app and put cert.p12 there.
+    With this VM running, open crosh (Ctrl+Alt+T) and run:
 
-        vmc share autofirma Downloads
+        vmc share autofirma Downloads/AutoFirma
 
     Shares are per VM. The Files app's "Share with Linux" targets the
     default `termina` VM, not this separate `autofirma` VM. Both can run
     at once. Repeat the share command after restarting this VM.
+    If you previously shared all of Downloads, stop/start the VM first
+    to clear that broader share.
     A file `cert.password` next to it skips the password dialog.
 
     Alternatively, copy/paste the certificate through the terminal.
@@ -46,9 +49,13 @@ let
     running). The import command creates the profile and certificate
     database if needed, without opening a browser window.
 
-    This home is a tmpfs. Nothing in it survives `vmc stop`: not the
-    Firefox profile, not the imported certificate. Keep your files in the
-    shared folder.
+    /home, /tmp, /var/tmp and /var/log are tmpfs mounts. Their contents,
+    including the Firefox profile and imported key, disappear on a full
+    VM reboot or stop/start. Suspend and closing Firefox do not clear them.
+    Save signed documents in the shared folder; files there persist on
+    ChromeOS. The root disk also persists. This is not a secure erase.
+    Sudo is disabled. The imported key remains accessible to this user
+    during the session, and ChromeOS is trusted to control the VM.
 
     The start page of Firefox (file:///etc/autofirma-vm/index.html) has
     links to the usual sedes.
@@ -62,19 +69,25 @@ in
   ];
 
   aldur.autofirma = {
-    # The Downloads folder of ChromeOS, once shared with this VM.
-    filesDir = "/mnt/chromeos/MyFiles/Downloads";
+    # Share only the signing directory, not all of ChromeOS Downloads.
+    filesDir = "/mnt/chromeos/MyFiles/Downloads/AutoFirma";
     filesHelp = ''
       <ol>
-        <li>Put <code>cert.p12</code> in the Downloads folder of ChromeOS.</li>
+        <li>Create <code>Downloads/AutoFirma</code> in ChromeOS and put
+          <code>cert.p12</code> there.</li>
         <li>With this VM running, open crosh (Ctrl+Alt+T) and run
-          <code>vmc share autofirma Downloads</code>. Repeat after each VM restart.</li>
+          <code>vmc share autofirma Downloads/AutoFirma</code>.
+          Repeat after each VM restart. If all of Downloads was already
+          shared, stop/start the VM first to clear that broader share.</li>
         <li>Start "Firefox (AutoFirma)" again, or run
           <code>autofirma-vm-firefox</code> in <code>vsh</code>.</li>
       </ol>
       <p>Shares are per VM. The Files app's "Share with Linux" targets the
         default <code>termina</code> VM, not the separate <code>autofirma</code>
         VM. Both VMs can remain running.</p>
+      <p>The home directory, temporary files and guest logs disappear on a
+        full VM reboot or stop/start. Files in the shared folder persist on
+        ChromeOS. Save signed documents there before stopping the VM.</p>
     '';
   };
 
@@ -82,7 +95,8 @@ in
   system.stateVersion = "26.05";
 
   # -- Size -------------------------------------------------------------------
-  # The image is disposable. CI builds a new one. No rebuild from inside.
+  # CI builds replacements. The Baguette root disk persists between boots;
+  # the session directories below are volatile. No rebuild from inside.
   # The registry pin alone puts the nixpkgs source (200 MiB) in the image.
   # nixos-rebuild pulls Python (130 MiB).
   nixpkgs.flake = {
@@ -106,13 +120,67 @@ in
   users.users.${user} = {
     # bash is in the closure. fish is not.
     shell = lib.mkForce pkgs.bashInteractive;
+    # Retain the graphics access needed by sommelier, without wheel.
+    extraGroups = lib.mkForce [ "video" "render" ];
   };
-  security.sudo.wheelNeedsPassword = false;
+  users.users.root.hashedPassword = lib.mkForce "!";
+  security.sudo.enable = false;
+  security.sudo-rs.enable = false;
+  security.doas.enable = false;
+  security.polkit.enable = false;
+  security.pam.services.su.requireWheel = true;
+  # User applications do not need to write to the persistent Nix store.
+  nix.settings.allowed-users = [ "root" ];
   # `vsh` opens a shell without a password.
   users.allowNoPasswordLogin = true;
 
-  # Nothing survives a session, like the QEMU guest: /home is a tmpfs. The
-  # certificate comes back in from `filesDir` at each start.
+  # ChromeOS may append `disk` and `sudo` to the account at startup through
+  # maitred. Keep the raw disks root-only regardless of those memberships.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="block", OWNER:="root", GROUP:="root", MODE:="0600"
+  '';
+
+  # Only these session directories are volatile; the root disk persists.
+  # Do not use noexec: Firefox/Java may load native libraries from tmpfs.
+  swapDevices = lib.mkForce [ ];
+  zramSwap.enable = false;
+  boot.tmp.useTmpfs = true;
+  boot.tmp.tmpfsSize = "1G";
+  fileSystems."/tmp".options = [ "nosuid" "nodev" ];
+  fileSystems."/var/tmp" = {
+    device = "none";
+    fsType = "tmpfs";
+    options = [ "size=1G" "mode=1777" "nosuid" "nodev" ];
+  };
+  fileSystems."/var/log" = {
+    device = "none";
+    fsType = "tmpfs";
+    options = [ "size=64M" "mode=755" "nosuid" "nodev" ];
+  };
+  services.journald.storage = "volatile";
+  services.journald.extraConfig = lib.mkForce ''
+    RuntimeMaxUse=32M
+    ForwardToConsole=no
+    ForwardToKMsg=no
+    ForwardToSyslog=no
+    ForwardToWall=no
+  '';
+
+  # Disabling systemd-coredump alone falls back to core files in the cwd.
+  # An empty pattern with core_uses_pid=0 disables that fallback too.
+  systemd.coredump.enable = false;
+  boot.kernel.sysctl = {
+    "kernel.core_pattern" = "";
+    "kernel.core_uses_pid" = 0;
+    "fs.suid_dumpable" = 0;
+  };
+  systemd.settings.Manager.DefaultLimitCORE = "0:0";
+  systemd.user.extraConfig = "DefaultLimitCORE=0:0";
+  security.pam.loginLimits = [
+    { domain = "*"; type = "-"; item = "core"; value = "0"; }
+  ];
+  environment.sessionVariables.MOZ_CRASHREPORTER_DISABLE = "1";
+
   fileSystems."/home" = {
     device = "none";
     fsType = "tmpfs";
@@ -120,6 +188,8 @@ in
       "defaults"
       "size=4G"
       "mode=755"
+      "nosuid"
+      "nodev"
     ];
   };
   # Activation creates the home before systemd mounts the tmpfs over it.
