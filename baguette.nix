@@ -107,101 +107,133 @@ in
   documentation.enable = false;
   # man-db has its own switch. The line above does not reach it.
   documentation.man.enable = false;
-  # The unit references gnupg for image signatures.
-  systemd.suppressedSystemUnits = [ "systemd-importd.service" ];
-  # Userborn replaces the perl activation script.
-  services.userborn.enable = true;
+  systemd = {
+    # The unit references gnupg for image signatures.
+    suppressedSystemUnits = [ "systemd-importd.service" ];
+
+    # Disabling systemd-coredump alone falls back to core files in the cwd.
+    # An empty pattern with core_uses_pid=0 disables that fallback too.
+    coredump.enable = false;
+    settings.Manager.DefaultLimitCORE = "0:0";
+    user.extraConfig = "DefaultLimitCORE=0:0";
+    # Activation creates the home before systemd mounts the tmpfs over it.
+    # The tmpfs is empty at each start, so tmpfiles also puts the README in.
+    tmpfiles.settings.autofirma = {
+      "/home/${user}".d = {
+        inherit user;
+        group = "users";
+        mode = "0700";
+      };
+      "/home/${user}/README.md"."L+".argument = toString homeReadme;
+    };
+  };
+  services = {
+    # Userborn replaces the perl activation script.
+    userborn.enable = true;
+
+    # ChromeOS may append `disk` and `sudo` to the account at startup through
+    # maitred. Keep the raw disks root-only regardless of those memberships.
+    udev.extraRules = ''
+      SUBSYSTEM=="block", OWNER:="root", GROUP:="root", MODE:="0600"
+    '';
+    journald.storage = "volatile";
+    journald.extraConfig = lib.mkForce ''
+      RuntimeMaxUse=32M
+      ForwardToConsole=no
+      ForwardToKMsg=no
+      ForwardToSyslog=no
+      ForwardToWall=no
+    '';
+  };
   # No /run/opengl-driver. mesa and its LLVM take 800 MiB. Firefox renders
   # in software; the sedes are plain pages. sommelier opens a GBM device at
   # start, but the sommelier of ChromeOS brings its own libraries on the
   # tools disk. The boot test does the same.
   hardware.graphics.enable = false;
 
-  users.users.${user} = {
-    # bash is in the closure. fish is not.
-    shell = lib.mkForce pkgs.bashInteractive;
-    # Retain the graphics access needed by sommelier, without wheel.
-    extraGroups = lib.mkForce [ "video" "render" ];
+  users = {
+    users.${user} = {
+      # bash is in the closure. fish is not.
+      shell = lib.mkForce pkgs.bashInteractive;
+      # Retain the graphics access needed by sommelier, without wheel.
+      extraGroups = lib.mkForce [
+        "video"
+        "render"
+      ];
+    };
+    users.root.hashedPassword = lib.mkForce "!";
+    # `vsh` opens a shell without a password.
+    allowNoPasswordLogin = true;
   };
-  users.users.root.hashedPassword = lib.mkForce "!";
-  security.sudo.enable = false;
-  security.sudo-rs.enable = false;
-  security.doas.enable = false;
-  security.polkit.enable = false;
-  security.pam.services.su.requireWheel = true;
+
+  security = {
+    sudo.enable = false;
+    sudo-rs.enable = false;
+    doas.enable = false;
+    polkit.enable = false;
+    pam.services.su.requireWheel = true;
+    pam.loginLimits = [
+      {
+        domain = "*";
+        type = "-";
+        item = "core";
+        value = "0";
+      }
+    ];
+  };
   # User applications do not need to write to the persistent Nix store.
   nix.settings.allowed-users = [ "root" ];
-  # `vsh` opens a shell without a password.
-  users.allowNoPasswordLogin = true;
-
-  # ChromeOS may append `disk` and `sudo` to the account at startup through
-  # maitred. Keep the raw disks root-only regardless of those memberships.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="block", OWNER:="root", GROUP:="root", MODE:="0600"
-  '';
 
   # Only these session directories are volatile; the root disk persists.
   # Do not use noexec: Firefox/Java may load native libraries from tmpfs.
   swapDevices = lib.mkForce [ ];
   zramSwap.enable = false;
-  boot.tmp.useTmpfs = true;
-  boot.tmp.tmpfsSize = "1G";
-  fileSystems."/tmp".options = [ "nosuid" "nodev" ];
-  fileSystems."/var/tmp" = {
-    device = "none";
-    fsType = "tmpfs";
-    options = [ "size=1G" "mode=1777" "nosuid" "nodev" ];
-  };
-  fileSystems."/var/log" = {
-    device = "none";
-    fsType = "tmpfs";
-    options = [ "size=64M" "mode=755" "nosuid" "nodev" ];
-  };
-  services.journald.storage = "volatile";
-  services.journald.extraConfig = lib.mkForce ''
-    RuntimeMaxUse=32M
-    ForwardToConsole=no
-    ForwardToKMsg=no
-    ForwardToSyslog=no
-    ForwardToWall=no
-  '';
-
-  # Disabling systemd-coredump alone falls back to core files in the cwd.
-  # An empty pattern with core_uses_pid=0 disables that fallback too.
-  systemd.coredump.enable = false;
-  boot.kernel.sysctl = {
-    "kernel.core_pattern" = "";
-    "kernel.core_uses_pid" = 0;
-    "fs.suid_dumpable" = 0;
-  };
-  systemd.settings.Manager.DefaultLimitCORE = "0:0";
-  systemd.user.extraConfig = "DefaultLimitCORE=0:0";
-  security.pam.loginLimits = [
-    { domain = "*"; type = "-"; item = "core"; value = "0"; }
-  ];
-  environment.sessionVariables.MOZ_CRASHREPORTER_DISABLE = "1";
-
-  fileSystems."/home" = {
-    device = "none";
-    fsType = "tmpfs";
-    options = [
-      "defaults"
-      "size=4G"
-      "mode=755"
-      "nosuid"
-      "nodev"
-    ];
-  };
-  # Activation creates the home before systemd mounts the tmpfs over it.
-  # The tmpfs is empty at each start, so tmpfiles also puts the README in.
-  systemd.tmpfiles.settings.autofirma = {
-    "/home/${user}".d = {
-      inherit user;
-      group = "users";
-      mode = "0700";
+  boot = {
+    # boot.tmp supplies tmp.mount with nosuid,nodev; it does not define a
+    # fileSystems entry. Adding only options there leaves fsType undefined.
+    tmp.useTmpfs = true;
+    tmp.tmpfsSize = "1G";
+    kernel.sysctl = {
+      "kernel.core_pattern" = "";
+      "kernel.core_uses_pid" = 0;
+      "fs.suid_dumpable" = 0;
     };
-    "/home/${user}/README.md"."L+".argument = toString homeReadme;
   };
+  fileSystems = {
+    "/var/tmp" = {
+      device = "none";
+      fsType = "tmpfs";
+      options = [
+        "size=1G"
+        "mode=1777"
+        "nosuid"
+        "nodev"
+      ];
+    };
+    "/var/log" = {
+      device = "none";
+      fsType = "tmpfs";
+      options = [
+        "size=64M"
+        "mode=755"
+        "nosuid"
+        "nodev"
+      ];
+    };
+
+    "/home" = {
+      device = "none";
+      fsType = "tmpfs";
+      options = [
+        "defaults"
+        "size=4G"
+        "mode=755"
+        "nosuid"
+        "nodev"
+      ];
+    };
+  };
+  environment.sessionVariables.MOZ_CRASHREPORTER_DISABLE = "1";
 
   virtualisation = {
     buildMemorySize = 4096;
