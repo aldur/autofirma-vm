@@ -44,9 +44,6 @@ in
     # -- Size -----------------------------------------------------------------
     # Removes the interactive tools of the shared home config.
     aldur.workstation.enable = false;
-
-    # Keep the editor out. This guest is a browser appliance.
-    aldur.lazyvim.enable = lib.mkDefault false;
   };
 
   environment = {
