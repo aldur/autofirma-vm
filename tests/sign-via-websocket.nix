@@ -10,7 +10,6 @@
   lib,
   specialArgs,
   guestModule,
-  baseModule,
   autofirma-nix,
   production,
 }:
@@ -21,15 +20,16 @@ let
 in
 pkgs.testers.runNixOSTest {
   name = "autofirma-vm-sign-via-websocket";
+  globalTimeout = 600;
 
   node.specialArgs = specialArgs;
-  # The dotfiles base module sets nixpkgs.config and overlays.
+  # The shared appliance desktop sets overlays.
   node.pkgsReadOnly = false;
 
   nodes.machine = {
     imports = [
-      baseModule
       guestModule
+      "${specialArgs.inputs.self}/base_hosts/appliance/tests/compressed-store.nix"
       (import ./test-server.nix {
         autoscriptDir = "${autofirma-nix.inputs.autofirma-src}/afirma-ui-miniapplet-deploy/src/main/webapp/js";
         testJs = ./websocket-sign.js;
@@ -41,10 +41,14 @@ pkgs.testers.runNixOSTest {
     systemd.settings.Manager = lib.mkForce production.config.systemd.settings.Manager;
     systemd.user.extraConfig = lib.mkForce production.config.systemd.user.extraConfig;
     nix.nixPath = lib.mkForce production.config.nix.nixPath;
+    # Keep the production root lock; the test driver has its own console.
+    users.users.root.hashedPasswordFile = lib.mkForce null;
 
     # Clicks the button on the page. The test driver has no mouse.
     environment.systemPackages = [ pkgs.xdotool ];
     environment.etc."autofirma-test/signer.pem".source = "${testCert}/cert.pem";
+    environment.etc."appliance-isolation.sh".source =
+      "${specialArgs.inputs.self}/base_hosts/appliance/tests/isolation.sh";
 
     virtualisation = {
       memorySize = 4096;
@@ -60,7 +64,7 @@ pkgs.testers.runNixOSTest {
   testScript =
     { nodes, ... }:
     let
-      firefox = "${nodes.machine.config.programs.firefox.finalPackage}/bin/firefox";
+      firefox = "${nodes.machine.programs.firefox.finalPackage}/bin/firefox";
     in
     ''
       import shlex
@@ -70,6 +74,7 @@ pkgs.testers.runNixOSTest {
       machine.wait_for_unit("graphical.target")
       machine.wait_for_unit("create-autofirma-cert.service")
       machine.wait_for_open_port(443)
+      print(machine.succeed(f"user={USER} bash -e /etc/appliance-isolation.sh"))
 
       # Take the display and the session bus from the auto-login session.
       # Firefox reaches its running instance over the session bus.
@@ -166,5 +171,29 @@ pkgs.testers.runNixOSTest {
       machine.succeed(
           "${openssl} x509 -in /etc/Autofirma/Autofirma_ROOT.cer -noout -subject | grep 'AutoFirma ROOT'"
       )
+
+      # A full restart must discard the old profile and arbitrary writes
+      # outside /state. The wrapper will re-import only the fw_cfg key.
+      machine.succeed(firefox_main("pkill -TERM"))
+      machine.wait_until_fails(firefox_main("pgrep"))
+      machine.succeed(as_user(
+          "certutil -D -n sede.test -d sql:$(dirname ~/.mozilla/firefox/*/cert9.db)"
+      ))
+      machine.succeed(as_user(
+          "certutil -A -n session-only -t 'C,,' -d sql:$(dirname ~/.mozilla/firefox/*/cert9.db)"
+          " -i /etc/autofirma-test/ca.crt"
+      ))
+      machine.succeed(as_user("certutil -L -d sql:$(dirname ~/.mozilla/firefox/*/cert9.db) | grep -F session-only"))
+      machine.succeed(as_user("touch ~/autofirma-session-test"))
+      machine.succeed("touch /var/lib/autofirma-session-test")
+      machine.shutdown()
+      machine.start()
+      machine.wait_for_unit("graphical.target")
+      machine.wait_for_unit("create-autofirma-cert.service")
+      machine.succeed(f"test ! -e /home/{USER}/autofirma-session-test")
+      machine.succeed("test ! -e /var/lib/autofirma-session-test")
+      machine.wait_until_succeeds(firefox_main("pgrep"))
+      machine.wait_until_succeeds(as_user("certutil -K -d sql:$(dirname ~/.mozilla/firefox/*/cert9.db) | grep -i ficticio"))
+      machine.fail(as_user("certutil -L -d sql:$(dirname ~/.mozilla/firefox/*/cert9.db) | grep -F session-only"))
     '';
 }

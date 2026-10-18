@@ -206,7 +206,7 @@ let
       ${cfg.filesHelp}
       <p>Or import a file by hand. In a terminal here, run
         <code>import-certificate cert.p12</code>. Then restart Firefox.</p>
-      <p>Without a shared folder, copy/paste the certificate through the
+      <p>On ChromeOS, you can also copy/paste the certificate through the
         terminal. On a machine that has it, run
         <code>base64 &lt; cert.p12 | fold -w 64</code> and copy the output.
         Close Firefox, then run these commands in the guest terminal:</p>
@@ -232,7 +232,10 @@ let
   '';
 in
 {
-  imports = [ inputs.autofirma-nix.nixosModules.autofirma ];
+  imports = [
+    "${inputs.self}/base_hosts/appliance/guest.nix"
+    inputs.autofirma-nix.nixosModules.autofirma
+  ];
 
   options.aldur.autofirma = {
     filesDir = lib.mkOption {
@@ -253,6 +256,10 @@ in
   };
 
   config = {
+    # No user directories are preserved under /state. Import the signing
+    # certificate anew after each full VM restart.
+    aldur.appliance.application = firefox-session;
+
     programs = {
       autofirma = {
         enable = true;
@@ -287,16 +294,14 @@ in
                   enableParallelInstalling = false;
                 };
           in
-          (pkgs.wrapFirefox.override { inherit libcanberra-gtk3; })
-            (
-              pkgs.firefox-unwrapped
-              // {
-                ffmpegSupport = false;
-                pipewireSupport = false;
-                gssSupport = false;
-              }
-            )
-            { };
+          (pkgs.wrapFirefox.override { inherit libcanberra-gtk3; }) (
+            pkgs.firefox-unwrapped
+            // {
+              ffmpegSupport = false;
+              pipewireSupport = false;
+              gssSupport = false;
+            }
+          ) { };
         autoConfig = ''
           pref("network.protocol-handler.expose.afirma", true);
           // The autofirma-nix module sets network.protocol-handler.external.afirma.
@@ -354,6 +359,7 @@ in
       # AutoFirma discovers certificates through ~/.mozilla/firefox/profiles.ini.
       # Keep Firefox profiles in that directory.
       sessionVariables.MOZ_LEGACY_HOME = "1";
+      sessionVariables.MOZ_CRASHREPORTER_DISABLE = "1";
     };
 
     # All glibc locales take 220 MiB. Two locales are sufficient.

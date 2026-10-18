@@ -29,22 +29,32 @@ jobs:
           token: ${{ github.token }}
           path: ${{ env.SIGNING_KEYS }}
 
+      - name: Resolve build inputs
+        run: |
+          mkdir -p /tmp/subject
+          nix flake metadata --json \
+            --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" \
+            . > /tmp/subject/inputs.json
+          jq .locks /tmp/subject/inputs.json > /tmp/autofirma.lock
+
       - run: |
-          nix build \
+          nix build --max-jobs 1 --cores 4 --reference-lock-file /tmp/autofirma.lock \
             --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" \
             .#baguette-zimage
 
       # The SBOM of the system in the image. The build above made the
       # system, so this only walks its closure.
       - run: |
-          nix run \
+          nix run --reference-lock-file /tmp/autofirma.lock \
             --override-input aldur-dotfiles/gh-signing-keys "file+file://$SIGNING_KEYS" \
             .#sbom-baguette -- /tmp/subject
 
       # The attest job below attests the image by its checksum. The subject
       # name is the file name in the checksums file, so run the command in
       # the directory of the image.
-      - run: (cd result && sha256sum -- *.zst) > /tmp/subject/checksums.txt
+      - run: |
+          (cd result && sha256sum -- *.zst) > /tmp/subject/checksums.txt
+          (cd /tmp/subject && sha256sum inputs.json) >> /tmp/subject/checksums.txt
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -61,8 +71,9 @@ jobs:
           path: |
             /tmp/subject/checksums.txt
             /tmp/subject/sbom.spdx.json
+            /tmp/subject/inputs.json
           if-no-files-found: error
-          retention-days: 1
+          retention-days: ${{ inputs.retention-days }}
 
   # A separate job without Nix. The attest action of the dotfiles explains
   # why.

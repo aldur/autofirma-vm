@@ -1,6 +1,5 @@
 version: 2
-# Once a quarter. The tool is not in daily use, and each bump runs the
-# signing tests on KVM runners.
+# Refresh with the shared appliances; every bump runs the signing tests.
 updates:
   # The lock pins the dotfiles, nixos-crostini and autofirma-nix. A bump
   # opens one pull request, and the CI of that pull request runs the
@@ -9,7 +8,7 @@ updates:
     directory: "/"
     schedule:
       interval: "cron"
-      cronjob: "0 9 1 1,4,7,10 *"
+      cronjob: "0 9 1,15 * *"
       timezone: "Etc/UTC"
     groups:
       nix-inputs:
@@ -21,7 +20,7 @@ updates:
     directory: "/"
     schedule:
       interval: "cron"
-      cronjob: "0 9 1 1,4,7,10 *"
+      cronjob: "0 9 1,15 * *"
       timezone: "Etc/UTC"
     cooldown:
       default-days: 3

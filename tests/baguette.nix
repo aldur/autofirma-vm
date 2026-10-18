@@ -4,17 +4,24 @@
   testCert,
   configuration,
   crostini,
+  applianceTests,
 }:
+let
+  isolation =
+    builtins.readFile "${applianceTests}/isolation.sh"
+    + builtins.readFile "${applianceTests}/baguette.sh";
+in
 crostini.lib.mkBaguetteSmokeTest {
   inherit configuration;
   name = "autofirma-baguette-smoke";
+  reboots = 1;
   probeFiles = {
     "ciudadano.p12" = "${testCert}/ciudadano.p12";
     "password" = "${testCert}/password";
     "signer.pem" = "${testCert}/cert.pem";
   };
-  extraProbe = ''
-    echo "PROBE home-fs $(findmnt -n -o FSTYPE /home)"
+  extraProbe = isolation + ''
+    echo "PROBE home-fs $(findmnt -n -o FSTYPE -T /home/$user)"
     echo "PROBE pfx $(stat -c %a /etc/Autofirma/autofirma.pfx)"
     echo "PROBE ca $(stat -c %s /etc/Autofirma/Autofirma_ROOT.cer)"
     test -f /run/current-system/sw/share/applications/autofirma-vm-firefox.desktop
@@ -72,9 +79,11 @@ crostini.lib.mkBaguetteSmokeTest {
       exit 1
     fi
     echo "PROBE signature verified"
+    touch "/home/$user/autofirma-session-test" /var/lib/autofirma-session-test
   '';
   extraChecks = [
-    "home-fs tmpfs$"
+    "isolation root overlay$"
+    "home-fs overlay$"
     "pfx 644$"
     "ca [1-9][0-9]*$"
     "manual import before firefox$"
@@ -82,4 +91,13 @@ crostini.lib.mkBaguetteSmokeTest {
     "import present$"
     "signature verified$"
   ];
+  secondProbe = isolation + ''
+    test ! -e "/home/$user/autofirma-session-test"
+    test ! -e /var/lib/autofirma-session-test
+    test ! -e "/home/$user/.mozilla/firefox/profiles.ini"
+    test ! -e ${lib.escapeShellArg configuration.config.aldur.autofirma.filesDir}/cert.p12
+    test -s /etc/Autofirma/Autofirma_ROOT.cer
+    echo "PROBE session discarded"
+  '';
+  secondChecks = [ "session discarded$" ];
 }

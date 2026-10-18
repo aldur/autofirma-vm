@@ -1,7 +1,5 @@
-# The guest as a ChromeOS Baguette VM. ChromeOS shows each window through
-# sommelier, so the guest has no desktop. The image does not import the
-# dotfiles base module: no shell tools, no home-manager, no sshd. `vsh`
-# gives a shell.
+# ChromeOS shows each window through sommelier. The shared appliance base
+# supplies the ephemeral root and hardening; vsh gives a shell.
 {
   config,
   inputs,
@@ -49,11 +47,11 @@ let
     running). The import command creates the profile and certificate
     database if needed, without opening a browser window.
 
-    /home, /tmp, /var/tmp and /var/log are tmpfs mounts. Their contents,
-    including the Firefox profile and imported key, disappear on a full
-    VM reboot or stop/start. Suspend and closing Firefox do not clear them.
-    Save signed documents in the shared folder; files there persist on
-    ChromeOS. The root disk also persists. This is not a secure erase.
+    The root uses a fresh overlay at each boot. No home directories are
+    preserved under /state. The Firefox profile and imported key disappear
+    on a full VM reboot or stop/start. Suspend and closing Firefox do not
+    clear them. Save signed documents in the shared folder; files there
+    persist on ChromeOS. This is not a secure erase.
     Sudo is disabled. The imported key remains accessible to this user
     during the session, and ChromeOS is trusted to control the VM.
 
@@ -64,7 +62,7 @@ let
 in
 {
   imports = [
-    inputs.self.nixosModules.baguette-guest
+    "${inputs.self}/base_hosts/appliance/baguette.nix"
     ./guest.nix
   ];
 
@@ -92,153 +90,19 @@ in
   };
 
   networking.hostName = "autofirma-baguette";
-  system.stateVersion = "26.05";
 
-  # -- Size -------------------------------------------------------------------
-  # CI builds replacements. The Baguette root disk persists between boots;
-  # the session directories below are volatile. No rebuild from inside.
-  # The registry pin alone puts the nixpkgs source (200 MiB) in the image.
-  # nixos-rebuild pulls Python (130 MiB).
-  nixpkgs.flake = {
-    setFlakeRegistry = false;
-    setNixPath = false;
-  };
-  system.tools.nixos-rebuild.enable = false;
-  documentation.enable = false;
-  # man-db has its own switch. The line above does not reach it.
-  documentation.man.enable = false;
-  systemd = {
-    # The unit references gnupg for image signatures.
-    suppressedSystemUnits = [ "systemd-importd.service" ];
+  # Send host-opened links through the same certificate-import wrapper.
+  systemd.user.services.garcon.environment.BROWSER = lib.mkForce (
+    lib.getExe config.aldur.appliance.application
+  );
 
-    # Disabling systemd-coredump alone falls back to core files in the cwd.
-    # An empty pattern with core_uses_pid=0 disables that fallback too.
-    coredump.enable = false;
-    settings.Manager.DefaultLimitCORE = "0:0";
-    user.extraConfig = "DefaultLimitCORE=0:0";
-    # Activation creates the home before systemd mounts the tmpfs over it.
-    # The tmpfs is empty at each start, so tmpfiles also puts the README in.
-    tmpfiles.settings.autofirma = {
-      "/home/${user}".d = {
-        inherit user;
-        group = "users";
-        mode = "0700";
-      };
-      "/home/${user}/README.md"."L+".argument = toString homeReadme;
+  # The home is empty at boot; make the instructions available to vsh.
+  systemd.tmpfiles.settings.autofirma = {
+    "/home/${user}".d = {
+      inherit user;
+      group = "users";
+      mode = "0700";
     };
-  };
-  services = {
-    # Userborn replaces the perl activation script.
-    userborn.enable = true;
-
-    # ChromeOS may append `disk` and `sudo` to the account at startup through
-    # maitred. Keep the raw disks root-only regardless of those memberships.
-    udev.extraRules = ''
-      SUBSYSTEM=="block", OWNER:="root", GROUP:="root", MODE:="0600"
-    '';
-    journald.storage = "volatile";
-    journald.extraConfig = lib.mkForce ''
-      RuntimeMaxUse=32M
-      ForwardToConsole=no
-      ForwardToKMsg=no
-      ForwardToSyslog=no
-      ForwardToWall=no
-    '';
-  };
-  # No /run/opengl-driver. mesa and its LLVM take 800 MiB. Firefox renders
-  # in software; the sedes are plain pages. sommelier opens a GBM device at
-  # start, but the sommelier of ChromeOS brings its own libraries on the
-  # tools disk. The boot test does the same.
-  hardware.graphics.enable = false;
-
-  users = {
-    users.${user} = {
-      # bash is in the closure. fish is not.
-      shell = lib.mkForce pkgs.bashInteractive;
-      # Retain the graphics access needed by sommelier, without wheel.
-      extraGroups = lib.mkForce [
-        "video"
-        "render"
-      ];
-    };
-    users.root.hashedPassword = lib.mkForce "!";
-    # `vsh` opens a shell without a password.
-    allowNoPasswordLogin = true;
-  };
-
-  security = {
-    sudo.enable = false;
-    sudo-rs.enable = false;
-    doas.enable = false;
-    polkit.enable = false;
-    pam.services.su.requireWheel = true;
-    pam.loginLimits = [
-      {
-        domain = "*";
-        type = "-";
-        item = "core";
-        value = "0";
-      }
-    ];
-  };
-  # User applications do not need to write to the persistent Nix store.
-  nix.settings.allowed-users = [ "root" ];
-
-  # Only these session directories are volatile; the root disk persists.
-  # Do not use noexec: Firefox/Java may load native libraries from tmpfs.
-  swapDevices = lib.mkForce [ ];
-  zramSwap.enable = false;
-  boot = {
-    # boot.tmp supplies tmp.mount with nosuid,nodev; it does not define a
-    # fileSystems entry. Adding only options there leaves fsType undefined.
-    tmp.useTmpfs = true;
-    tmp.tmpfsSize = "1G";
-    kernel.sysctl = {
-      "kernel.core_pattern" = "";
-      "kernel.core_uses_pid" = 0;
-      "fs.suid_dumpable" = 0;
-    };
-  };
-  fileSystems = {
-    "/var/tmp" = {
-      device = "none";
-      fsType = "tmpfs";
-      options = [
-        "size=1G"
-        "mode=1777"
-        "nosuid"
-        "nodev"
-      ];
-    };
-    "/var/log" = {
-      device = "none";
-      fsType = "tmpfs";
-      options = [
-        "size=64M"
-        "mode=755"
-        "nosuid"
-        "nodev"
-      ];
-    };
-
-    "/home" = {
-      device = "none";
-      fsType = "tmpfs";
-      options = [
-        "defaults"
-        "size=4G"
-        "mode=755"
-        "nosuid"
-        "nodev"
-      ];
-    };
-  };
-  environment.sessionVariables.MOZ_CRASHREPORTER_DISABLE = "1";
-
-  virtualisation = {
-    buildMemorySize = 4096;
-    # The closure is under 4 GiB. The VM grows the filesystem to the size
-    # of `vmc create --size` at boot.
-    diskImageSize = 6144;
+    "/home/${user}/README.md"."L+".argument = toString homeReadme;
   };
 }

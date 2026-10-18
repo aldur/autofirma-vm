@@ -2,7 +2,7 @@
   description = "A NixOS guest that runs AutoFirma: a QEMU VM, or a ChromeOS Baguette image.";
 
   # The structural parts come from the dotfiles (the qemu-vm launcher, the
-  # QEMU and Baguette guest modules, the base configuration) and from
+  # shared hardened appliance modules) and from
   # nixos-crostini (the Baguette image and its tests). This flake holds
   # only what is specific to AutoFirma.
   inputs = {
@@ -29,7 +29,10 @@
       inherit (aldur-dotfiles.inputs) nixpkgs flake-utils;
       inherit (nixpkgs) lib;
 
-      specialArgs = aldur-dotfiles.lib.mkSpecialArgs inputs;
+      guestInputs = inputs // {
+        appliance = inputs.self;
+      };
+      specialArgs = aldur-dotfiles.lib.mkSpecialArgs guestInputs;
 
       linuxSystems = [
         "x86_64-linux"
@@ -37,12 +40,14 @@
       ];
 
       guest = aldur-dotfiles.lib.mkQemuGuest {
-        inherit inputs;
+        inputs = guestInputs;
         name = "autofirma-vm";
         hostName = "autofirma-vm";
         qemuModule = ./desktop.nix;
 
         vmOverrides = {
+          baseModules = [ ];
+          compressStoreImage = true;
           defaultVmDir = "$HOME/.local/share/autofirma-vm";
           defaultMemory = 4096;
           defaultCores = 4;
@@ -50,7 +55,7 @@
           # Nothing survives a session: no profile, no cookies, no CA. The
           # certificate comes in with `--file` each time.
           defaultEphemeral = true;
-          defaultClipboard = true;
+          defaultClipboard = false;
         };
       };
 
@@ -88,7 +93,6 @@
             # and signs a document through the afirma:// WebSocket flow.
             sign-via-websocket = pkgs.callPackage ./tests/sign-via-websocket.nix {
               guestModule = ./desktop.nix;
-              baseModule = aldur-dotfiles.nixosModules.default;
               inherit specialArgs;
               inherit (inputs) autofirma-nix;
               production = guest.nixosConfigurations."autofirma-vm-${lib.removeSuffix "-linux" system}";
@@ -104,6 +108,7 @@
               inherit pkgs lib testCert;
               configuration = baguetteConfiguration;
               crostini = inputs.nixos-crostini;
+              applianceTests = "${aldur-dotfiles}/base_hosts/appliance/tests";
             };
           };
         }
