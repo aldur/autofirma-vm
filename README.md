@@ -99,9 +99,10 @@ Repeat the transfer and import after restarting an ephemeral guest.
 The workflow `baguette-image.yml` builds the arm64 image on demand
 (`workflow_dispatch`) and keeps it as the artifact
 `autofirma-baguette-arm64` for a few days. The push pipeline builds the ARM
-system closure and runs the x86 runtime checks on KVM. The workflow attests
-the image and its resolved inputs. Download both artifacts, verify them,
-then create the VM in `crosh`:
+system closure and runs the x86 runtime checks on KVM. The image artifact
+contains a read-only base and a separate state image. The workflow attests
+both images and their resolved inputs. Download both artifacts and verify
+them:
 
 ```bash
 gh run download --repo aldur/autofirma-vm --name autofirma-baguette-arm64
@@ -110,12 +111,33 @@ gh attestation verify inputs.json --repo aldur/autofirma-vm \
   --signer-workflow aldur/autofirma-vm/.github/workflows/baguette-image.yml
 gh attestation verify baguette_rootfs.img.zst --repo aldur/autofirma-vm \
   --signer-workflow aldur/autofirma-vm/.github/workflows/baguette-image.yml
-
-vmc create --vm-type BAGUETTE --size 10G \
-  --source /home/chronos/user/MyFiles/Downloads/baguette_rootfs.img.zst \
-  autofirma
-vmc start --vm-type BAGUETTE autofirma
+gh attestation verify baguette_state.img.zst --repo aldur/autofirma-vm \
+  --signer-workflow aldur/autofirma-vm/.github/workflows/baguette-image.yml
 ```
+
+Decompress the verified base before use. The ARM64 disk sandbox in ChromeOS
+156 blocks `pread64`, which crosvm uses to read the compressed base:
+
+```bash
+zstd --decompress --keep baguette_rootfs.img.zst
+```
+
+Copy `baguette_rootfs.img` and `baguette_state.img.zst` to ChromeOS Downloads.
+Create a new VM in `crosh` (`Ctrl+Alt+T`). Use a new name if `autofirma`
+already exists:
+
+```text
+vmc create --vm-type BAGUETTE --size 10G \
+  --source /home/chronos/user/MyFiles/Downloads/baguette_state.img.zst \
+  autofirma
+vmc start --vm-type BAGUETTE \
+  --rootfs /home/chronos/user/MyFiles/Downloads/baguette_rootfs.img \
+  autofirma
+```
+
+Repeat the full start command after each VM stop or ChromeOS login. The app
+launcher does not retain `--rootfs`; use it only after the VM starts. Keep
+the base image outside directories shared with Linux.
 
 To build the image yourself:
 
